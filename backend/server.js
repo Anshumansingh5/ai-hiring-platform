@@ -1,9 +1,12 @@
+require("dotenv").config();
 // Import Express — the web framework used to create the HTTP server and define routes
+
 const express = require("express");
+const jobRoutes = require("./routes/jobRoutes");
 // Import CORS — allows the frontend (running on a different port) to call this API
 const cors = require("cors");
 const authRoutes = require("./routes/authRoutes");
-
+const connectDB = require("./config/db");
 // Create the Express application instance
 const app = express();
 // Port the server listens on; 5000 keeps it separate from the Next.js frontend on 3000
@@ -20,9 +23,23 @@ app.get("/health", (req, res) => {
 });
 
 // Mount authentication routes (POST /login, etc.)
-app.use(authRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/jobs", jobRoutes);
 
-// Start the server and listen for incoming HTTP requests
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+// 404 Handler (must be after all routes)
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "Route not found",
+  });
 });
+// Start the server and listen for incoming HTTP requests
+async function startServer() {
+  await connectDB();
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+}
+startServer();
+
+
