@@ -6,11 +6,15 @@ const jobController = require("../controllers/jobController");
 
 const authenticate = require("../middleware/authMiddleware");
 const authorize = require("../middleware/authorize");
+const validateRequest = require("../middleware/validateRequest");
+const { createJobValidator } = require("../validators/jobValidator");
 
 router.post(
   "/",
   authenticate,
   authorize("recruiter", "admin"),
+  createJobValidator,
+  validateRequest,
   jobController.createJob
 );
 

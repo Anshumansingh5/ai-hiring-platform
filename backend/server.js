@@ -7,6 +7,9 @@ const jobRoutes = require("./routes/jobRoutes");
 const cors = require("cors");
 const authRoutes = require("./routes/authRoutes");
 const connectDB = require("./config/db");
+const errorHandler = require("./middleware/errorHandler");
+
+const applicationRoutes = require("./routes/applicationRoutes");
 // Create the Express application instance
 const app = express();
 // Port the server listens on; 5000 keeps it separate from the Next.js frontend on 3000
@@ -17,6 +20,7 @@ app.use(cors());
 // Parse incoming JSON request bodies (e.g. { "email": "...", "password": "..." })
 app.use(express.json());
 
+
 // Health check — confirms the backend is up and responding
 app.get("/health", (req, res) => {
   res.json({ status: "Backend Running" });
@@ -25,6 +29,8 @@ app.get("/health", (req, res) => {
 // Mount authentication routes (POST /login, etc.)
 app.use("/api/auth", authRoutes);
 app.use("/api/jobs", jobRoutes);
+app.use("/api/applications", applicationRoutes);
+app.use(errorHandler);
 
 // 404 Handler (must be after all routes)
 app.use((req, res) => {

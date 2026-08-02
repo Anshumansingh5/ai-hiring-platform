@@ -1,7 +1,8 @@
 const jobService = require("../services/jobService");
 const Job = require("../models/Job");
+const AppError = require("../utils/AppError");
 
-const createJob = async (req, res) => {
+const createJob = async (req, res, next) => {
   try {
     const job = await jobService.createJob({
       ...req.body,
@@ -14,14 +15,11 @@ const createJob = async (req, res) => {
       data: job,
     });
   } catch (error) {
-    return res.status(400).json({
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
 
-const getAllJobs = async (req, res) => {
+const getAllJobs = async (req, res, next) => {
   try {
     const jobs = await jobService.getAllJobs();
 
@@ -30,22 +28,16 @@ const getAllJobs = async (req, res) => {
       data: jobs,
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
 
-const getJobById = async (req, res) => {
+const getJobById = async (req, res, next) => {
   try {
     const job = await jobService.getJobById(req.params.id);
 
     if (!job) {
-      return res.status(404).json({
-        success: false,
-        message: "Job not found",
-      });
+      return next(new AppError("Job not found", 404));
     }
 
     return res.json({
@@ -53,32 +45,23 @@ const getJobById = async (req, res) => {
       data: job,
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
 
-const updateJob = async (req, res) => {
+const updateJob = async (req, res, next) => {
   try {
     const job = await Job.findById(req.params.id);
 
     if (!job) {
-      return res.status(404).json({
-        success: false,
-        message: "Job not found",
-      });
+      return next(new AppError("Job not found", 404));
     }
 
     if (
       job.recruiter.toString() !== req.user.id &&
       req.user.role !== "admin"
     ) {
-      return res.status(403).json({
-        success: false,
-        message: "Access denied",
-      });
+      return next(new AppError("Access denied", 403));
     }
 
     const updatedJob = await jobService.updateJob(req.params.id, req.body);
@@ -89,32 +72,23 @@ const updateJob = async (req, res) => {
       data: updatedJob,
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
 
-const deleteJob = async (req, res) => {
+const deleteJob = async (req, res, next) => {
   try {
     const job = await Job.findById(req.params.id);
 
     if (!job) {
-      return res.status(404).json({
-        success: false,
-        message: "Job not found",
-      });
+      return next(new AppError("Job not found", 404));
     }
 
     if (
       job.recruiter.toString() !== req.user.id &&
       req.user.role !== "admin"
     ) {
-      return res.status(403).json({
-        success: false,
-        message: "Access denied",
-      });
+      return next(new AppError("Access denied", 403));
     }
 
     await jobService.deleteJob(req.params.id);
@@ -124,10 +98,7 @@ const deleteJob = async (req, res) => {
       message: "Job deleted successfully",
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
 

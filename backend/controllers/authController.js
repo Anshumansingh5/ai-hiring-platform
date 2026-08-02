@@ -1,26 +1,23 @@
 const authService = require("../services/authService");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const AppError = require("../utils/AppError");
+
 // Login handler
-const login = async (req, res) => {
+const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
     const user = await authService.login(email);
 
-    if (user == null) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid email or password",
-      });
+    if (!user) {
+      return next(new AppError("Invalid email or password", 401));
     }
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid email or password",
-      });
+      return next(new AppError("Invalid email or password", 401));
     }
 
     const token = jwt.sign(
@@ -33,21 +30,19 @@ const login = async (req, res) => {
         expiresIn: "7d",
       }
     );
+
     return res.status(200).json({
       success: true,
       message: "Login successful",
-      token: token,
+      token,
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
 
 // Register handler
-const register = async (req, res) => {
+const register = async (req, res, next) => {
   try {
     const user = await authService.registerUser(req.body);
 
@@ -64,10 +59,7 @@ const register = async (req, res) => {
       data: userResponse,
     });
   } catch (error) {
-    return res.status(400).json({
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
 
