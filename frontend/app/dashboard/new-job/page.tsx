@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState, useSyncExternalStore } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const inputClassName =
@@ -11,20 +11,11 @@ const labelClassName =
 
 const errorClassName = "mt-1.5 text-sm text-red-600 dark:text-red-400";
 
-const subscribeToStorage = () => () => {};
-
 export default function NewJobPage() {
   const router = useRouter();
-  const token = useSyncExternalStore(
-    subscribeToStorage,
-    () => localStorage.getItem("token"),
-    () => null,
-  );
-  const role = useSyncExternalStore(
-    subscribeToStorage,
-    () => localStorage.getItem("role"),
-    () => null,
-  );
+  const [token, setToken] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [title, setTitle] = useState("");
   const [company, setCompany] = useState("");
   const [location, setLocation] = useState("");
@@ -40,15 +31,21 @@ export default function NewJobPage() {
   const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
-    if (!token) {
+    const storedToken = localStorage.getItem("token");
+    const storedRole = localStorage.getItem("role");
+    setToken(storedToken);
+    setRole(storedRole);
+    setAuthChecked(true);
+
+    if (!storedToken) {
       router.replace("/");
       return;
     }
 
-    if (role !== "recruiter") {
+    if (storedRole !== "recruiter") {
       router.replace("/dashboard");
     }
-  }, [role, router, token]);
+  }, [router]);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -122,6 +119,10 @@ export default function NewJobPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (!authChecked) {
+    return null;
+  }
 
   if (!token || role !== "recruiter") {
     return null;

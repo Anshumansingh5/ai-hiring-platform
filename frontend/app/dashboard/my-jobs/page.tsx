@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type Job = {
@@ -11,31 +11,28 @@ type Job = {
   description: string;
 };
 
-const subscribeToStorage = () => () => {};
-
 export default function MyJobsPage() {
   const router = useRouter();
-  const token = useSyncExternalStore(
-    subscribeToStorage,
-    () => localStorage.getItem("token"),
-    () => null,
-  );
-  const role = useSyncExternalStore(
-    subscribeToStorage,
-    () => localStorage.getItem("role"),
-    () => null,
-  );
+  const [token, setToken] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!token) {
+    const storedToken = localStorage.getItem("token");
+    const storedRole = localStorage.getItem("role");
+    setToken(storedToken);
+    setRole(storedRole);
+    setAuthChecked(true);
+
+    if (!storedToken) {
       router.replace("/");
       return;
     }
 
-    if (role !== "recruiter") {
+    if (storedRole !== "recruiter") {
       router.replace("/dashboard");
       return;
     }
@@ -44,7 +41,7 @@ export default function MyJobsPage() {
       try {
         const response = await fetch("http://localhost:5000/api/jobs", {
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${storedToken}`,
           },
         });
         const data = await response.json();
@@ -63,7 +60,11 @@ export default function MyJobsPage() {
     };
 
     fetchJobs();
-  }, [role, router, token]);
+  }, [router]);
+
+  if (!authChecked) {
+    return null;
+  }
 
   if (!token || role !== "recruiter") {
     return null;

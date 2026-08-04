@@ -1,28 +1,25 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-
-const subscribeToStorage = () => () => {};
 
 export default function DashboardPage() {
   const router = useRouter();
-  const token = useSyncExternalStore(
-    subscribeToStorage,
-    () => localStorage.getItem("token"),
-    () => null,
-  );
-  const role = useSyncExternalStore(
-    subscribeToStorage,
-    () => localStorage.getItem("role"),
-    () => null,
-  );
+  const [token, setToken] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    if (!token) {
+    const storedToken = localStorage.getItem("token");
+    const storedRole = localStorage.getItem("role");
+    setToken(storedToken);
+    setRole(storedRole);
+    setAuthChecked(true);
+
+    if (!storedToken) {
       router.replace("/");
     }
-  }, [router, token]);
+  }, [router]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -32,6 +29,10 @@ export default function DashboardPage() {
     localStorage.removeItem("email");
     router.replace("/");
   };
+
+  if (!authChecked) {
+    return null;
+  }
 
   if (!token || (role !== "recruiter" && role !== "candidate")) {
     return null;
