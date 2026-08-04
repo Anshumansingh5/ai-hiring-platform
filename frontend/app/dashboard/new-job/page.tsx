@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, useState } from "react";
+import { FormEvent, useEffect, useState, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
 
 const inputClassName =
   "block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none transition focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-400 dark:focus:ring-zinc-400/10";
@@ -10,114 +11,67 @@ const labelClassName =
 
 const errorClassName = "mt-1.5 text-sm text-red-600 dark:text-red-400";
 
-type SkillTagInputProps = {
-  id: string;
-  label: string;
-  skills: string[];
-  onChange: (skills: string[]) => void;
-  placeholder?: string;
-};
-
-function SkillTagInput({
-  id,
-  label,
-  skills,
-  onChange,
-  placeholder = "Type a skill and press Enter",
-}: SkillTagInputProps) {
-  const [inputValue, setInputValue] = useState("");
-
-  const addSkill = (raw: string) => {
-    const skill = raw.trim();
-    if (!skill || skills.includes(skill)) return;
-    onChange([...skills, skill]);
-    setInputValue("");
-  };
-
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      addSkill(inputValue);
-    }
-  };
-
-  const removeSkill = (skill: string) => {
-    onChange(skills.filter((s) => s !== skill));
-  };
-
-  return (
-    <div>
-      <label htmlFor={id} className={labelClassName}>
-        {label}
-      </label>
-      <div className="rounded-lg border border-zinc-300 bg-white p-2 focus-within:border-zinc-900 focus-within:ring-2 focus-within:ring-zinc-900/10 dark:border-zinc-700 dark:bg-zinc-900 dark:focus-within:border-zinc-400 dark:focus-within:ring-zinc-400/10">
-        {skills.length > 0 && (
-          <div className="mb-2 flex flex-wrap gap-2">
-            {skills.map((skill) => (
-              <span
-                key={skill}
-                className="inline-flex items-center gap-1 rounded-md bg-zinc-100 px-2.5 py-1 text-sm text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200"
-              >
-                {skill}
-                <button
-                  type="button"
-                  onClick={() => removeSkill(skill)}
-                  className="rounded p-0.5 text-zinc-500 transition hover:bg-zinc-200 hover:text-zinc-800 dark:hover:bg-zinc-700 dark:hover:text-zinc-100"
-                  aria-label={`Remove ${skill}`}
-                >
-                  <svg
-                    className="h-3.5 w-3.5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={2}
-                    stroke="currentColor"
-                    aria-hidden="true"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M6 18 18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-        <input
-          id={id}
-          type="text"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          className="w-full border-0 bg-transparent px-1.5 py-1 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none dark:text-zinc-100 dark:placeholder:text-zinc-500"
-        />
-      </div>
-    </div>
-  );
-}
+const subscribeToStorage = () => () => {};
 
 export default function NewJobPage() {
-  const [title, setTitle] = useState("");
-  const [department, setDepartment] = useState("");
-  const [employmentType, setEmploymentType] = useState("Full-time");
-  const [experienceMin, setExperienceMin] = useState("");
-  const [experienceMax, setExperienceMax] = useState("");
-  const [mustHaveSkills, setMustHaveSkills] = useState<string[]>([]);
-  const [niceToHaveSkills, setNiceToHaveSkills] = useState<string[]>([]);
-  const [description, setDescription] = useState("");
-  const [minEducation, setMinEducation] = useState("Any");
-  const [errors, setErrors] = useState<{ title?: string; description?: string }>(
-    {},
+  const router = useRouter();
+  const token = useSyncExternalStore(
+    subscribeToStorage,
+    () => localStorage.getItem("token"),
+    () => null,
   );
+  const role = useSyncExternalStore(
+    subscribeToStorage,
+    () => localStorage.getItem("role"),
+    () => null,
+  );
+  const [title, setTitle] = useState("");
+  const [company, setCompany] = useState("");
+  const [location, setLocation] = useState("");
+  const [description, setDescription] = useState("");
+  const [errors, setErrors] = useState<{
+    title?: string;
+    company?: string;
+    location?: string;
+    description?: string;
+  }>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  useEffect(() => {
+    if (!token) {
+      router.replace("/");
+      return;
+    }
+
+    if (role !== "recruiter") {
+      router.replace("/dashboard");
+    }
+  }, [role, router, token]);
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    const newErrors: { title?: string; description?: string } = {};
+    if (!token) {
+      router.replace("/");
+      return;
+    }
+
+    const newErrors: {
+      title?: string;
+      company?: string;
+      location?: string;
+      description?: string;
+    } = {};
     if (!title.trim()) {
       newErrors.title = "Job title is required.";
+    }
+    if (!company.trim()) {
+      newErrors.company = "Company is required.";
+    }
+    if (!location.trim()) {
+      newErrors.location = "Location is required.";
     }
     if (!description.trim()) {
       newErrors.description = "Job description is required.";
@@ -129,21 +83,49 @@ export default function NewJobPage() {
     }
 
     setErrors({});
+    setSubmitError("");
+    setSuccessMessage("");
 
     const formData = {
       title: title.trim(),
-      department: department.trim(),
-      employmentType,
-      experienceMin: experienceMin === "" ? 0 : Number(experienceMin),
-      experienceMax: experienceMax === "" ? 0 : Number(experienceMax),
-      mustHaveSkills,
-      niceToHaveSkills,
+      company: company.trim(),
+      location: location.trim(),
       description: description.trim(),
-      minEducation,
     };
 
-    console.log(formData);
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch("http://localhost:5000/api/jobs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(formData),
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        setSubmitError(data.message || "Unable to create job.");
+        return;
+      }
+
+      setTitle("");
+      setCompany("");
+      setLocation("");
+      setDescription("");
+      setSuccessMessage(data.message || "Job created successfully.");
+    } catch {
+      setSubmitError("Unable to create job. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (!token || role !== "recruiter") {
+    return null;
+  }
 
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
@@ -178,83 +160,44 @@ export default function NewJobPage() {
             </div>
 
             <div>
-              <label htmlFor="department" className={labelClassName}>
-                Department
+              <label htmlFor="company" className={labelClassName}>
+                Company <span className="text-red-600 dark:text-red-400">*</span>
               </label>
               <input
-                id="department"
+                id="company"
                 type="text"
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-                placeholder="e.g. Engineering"
+                value={company}
+                onChange={(e) => {
+                  setCompany(e.target.value);
+                  if (errors.company) {
+                    setErrors((prev) => ({ ...prev, company: undefined }));
+                  }
+                }}
+                placeholder="e.g. Acme Inc."
                 className={inputClassName}
               />
+              {errors.company && <p className={errorClassName}>{errors.company}</p>}
             </div>
 
             <div>
-              <label htmlFor="employmentType" className={labelClassName}>
-                Employment Type
+              <label htmlFor="location" className={labelClassName}>
+                Location <span className="text-red-600 dark:text-red-400">*</span>
               </label>
-              <select
-                id="employmentType"
-                value={employmentType}
-                onChange={(e) => setEmploymentType(e.target.value)}
+              <input
+                id="location"
+                type="text"
+                value={location}
+                onChange={(e) => {
+                  setLocation(e.target.value);
+                  if (errors.location) {
+                    setErrors((prev) => ({ ...prev, location: undefined }));
+                  }
+                }}
+                placeholder="e.g. Bengaluru, India"
                 className={inputClassName}
-              >
-                <option value="Full-time">Full-time</option>
-                <option value="Part-time">Part-time</option>
-                <option value="Internship">Internship</option>
-                <option value="Contract">Contract</option>
-              </select>
+              />
+              {errors.location && <p className={errorClassName}>{errors.location}</p>}
             </div>
-
-            <div>
-              <span className={labelClassName}>Years of Experience Required</span>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="experienceMin" className="mb-1 block text-xs text-zinc-500 dark:text-zinc-400">
-                    Min
-                  </label>
-                  <input
-                    id="experienceMin"
-                    type="number"
-                    min={0}
-                    value={experienceMin}
-                    onChange={(e) => setExperienceMin(e.target.value)}
-                    placeholder="0"
-                    className={inputClassName}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="experienceMax" className="mb-1 block text-xs text-zinc-500 dark:text-zinc-400">
-                    Max
-                  </label>
-                  <input
-                    id="experienceMax"
-                    type="number"
-                    min={0}
-                    value={experienceMax}
-                    onChange={(e) => setExperienceMax(e.target.value)}
-                    placeholder="10"
-                    className={inputClassName}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <SkillTagInput
-              id="mustHaveSkills"
-              label="Must-Have Skills"
-              skills={mustHaveSkills}
-              onChange={setMustHaveSkills}
-            />
-
-            <SkillTagInput
-              id="niceToHaveSkills"
-              label="Nice-to-Have Skills"
-              skills={niceToHaveSkills}
-              onChange={setNiceToHaveSkills}
-            />
 
             <div>
               <label htmlFor="description" className={labelClassName}>
@@ -278,29 +221,19 @@ export default function NewJobPage() {
               )}
             </div>
 
-            <div>
-              <label htmlFor="minEducation" className={labelClassName}>
-                Minimum Education
-              </label>
-              <select
-                id="minEducation"
-                value={minEducation}
-                onChange={(e) => setMinEducation(e.target.value)}
-                className={inputClassName}
-              >
-                <option value="Any">Any</option>
-                <option value="Bachelor's">Bachelor&apos;s</option>
-                <option value="Master's">Master&apos;s</option>
-                <option value="PhD">PhD</option>
-              </select>
-            </div>
-
             <button
               type="submit"
+              disabled={isSubmitting}
               className="mt-2 w-full rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:focus-visible:outline-zinc-100"
             >
-              Create Job Posting
+              {isSubmitting ? "Creating Job..." : "Create Job Posting"}
             </button>
+            {submitError && <p className={errorClassName}>{submitError}</p>}
+            {successMessage && (
+              <p className="mt-1.5 text-sm text-emerald-600 dark:text-emerald-400">
+                {successMessage}
+              </p>
+            )}
           </form>
         </div>
       </div>

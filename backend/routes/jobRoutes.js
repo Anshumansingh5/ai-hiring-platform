@@ -18,7 +18,12 @@ router.post(
   jobController.createJob
 );
 
-router.get("/", jobController.getAllJobs);
+router.get(
+  "/",
+  authenticate,
+  authorize("recruiter", "admin"),
+  jobController.getAllJobs
+);
 
 router.get("/:id", jobController.getJobById);
 

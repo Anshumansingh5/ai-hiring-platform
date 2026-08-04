@@ -31,10 +31,18 @@ const login = async (req, res, next) => {
       }
     );
 
+    const userResponse = {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    };
+
     return res.status(200).json({
       success: true,
       message: "Login successful",
       token,
+      user: userResponse,
     });
   } catch (error) {
     next(error);

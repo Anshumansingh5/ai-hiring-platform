@@ -4,8 +4,11 @@ const createJob = async (jobData) => {
   return await Job.create(jobData);
 };
 
-const getAllJobs = async () => {
-  return await Job.find().populate("recruiter", "name email");
+const getAllJobs = async (recruiterId) => {
+  return await Job.find({ recruiter: recruiterId }).populate(
+    "recruiter",
+    "name email"
+  );
 };
 
 const getJobById = async (id) => {
