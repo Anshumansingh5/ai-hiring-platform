@@ -21,7 +21,14 @@ const createJob = async (req, res, next) => {
 
 const getAllJobs = async (req, res, next) => {
   try {
-    const jobs = await jobService.getAllJobs(req.user.id);
+    const { search, company, location, sort } = req.query;
+
+    const jobs = await jobService.getAllJobs(req.user.id, {
+      search,
+      company,
+      location,
+      sort,
+    });
 
     return res.json({
       success: true,
@@ -34,7 +41,14 @@ const getAllJobs = async (req, res, next) => {
 
 const getAvailableJobs = async (req, res, next) => {
   try {
-    const jobs = await jobService.getAvailableJobs();
+    const { search, company, location, sort } = req.query;
+
+    const jobs = await jobService.getAvailableJobs({
+      search,
+      company,
+      location,
+      sort,
+    });
 
     return res.json({
       success: true,

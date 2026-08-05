@@ -1,14 +1,40 @@
 const Job = require("../models/Job");
 
+// Escape user input before using it inside a RegExp so special characters
+// are treated literally (prevents regex injection / malformed patterns).
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 const createJob = async (jobData) => {
   return await Job.create(jobData);
 };
 
-const getAllJobs = async (recruiterId) => {
-  return await Job.find({ recruiter: recruiterId, status: "active" }).populate(
-    "recruiter",
-    "name email"
-  );
+const getAllJobs = async (recruiterId, filters = {}) => {
+  const { search, company, location, sort } = filters;
+
+  // Base query: always scoped to the logged-in recruiter's active jobs.
+  const query = { recruiter: recruiterId, status: "active" };
+
+  // Case-insensitive partial match across title OR company.
+  if (search) {
+    const pattern = new RegExp(escapeRegex(search), "i");
+    query.$or = [{ title: pattern }, { company: pattern }];
+  }
+
+  // Exact-value filters (values are supplied from the recruiter's own jobs).
+  if (company) {
+    query.company = company;
+  }
+
+  if (location) {
+    query.location = location;
+  }
+
+  // Sort by creation date; default to newest first.
+  const sortOrder = sort === "oldest" ? 1 : -1;
+
+  return await Job.find(query)
+    .sort({ createdAt: sortOrder })
+    .populate("recruiter", "name email");
 };
 
 const getArchivedJobs = async (recruiterId) => {
@@ -18,11 +44,33 @@ const getArchivedJobs = async (recruiterId) => {
   }).populate("recruiter", "name email");
 };
 
-const getAvailableJobs = async () => {
-  return await Job.find({ status: "active" }).populate(
-    "recruiter",
-    "name email"
-  );
+const getAvailableJobs = async (filters = {}) => {
+  const { search, company, location, sort } = filters;
+
+  // Base query: candidates only ever see active jobs.
+  const query = { status: "active" };
+
+  // Case-insensitive partial match across title OR company.
+  if (search) {
+    const pattern = new RegExp(escapeRegex(search), "i");
+    query.$or = [{ title: pattern }, { company: pattern }];
+  }
+
+  // Exact-value filters (values are supplied from the actual job data).
+  if (company) {
+    query.company = company;
+  }
+
+  if (location) {
+    query.location = location;
+  }
+
+  // Sort by creation date; default to newest first.
+  const sortOrder = sort === "oldest" ? 1 : -1;
+
+  return await Job.find(query)
+    .sort({ createdAt: sortOrder })
+    .populate("recruiter", "name email");
 };
 
 const archiveJob = async (id) => {
