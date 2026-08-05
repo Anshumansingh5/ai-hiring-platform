@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
+import BackButton from "@/app/components/BackButton";
+
 type Candidate = {
   _id: string;
   name?: string;
@@ -155,6 +157,7 @@ export default function JobApplicationsPage() {
     <main className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
       <div className="w-full max-w-4xl">
         <div className="rounded-2xl border border-zinc-200/80 bg-white p-8 shadow-xl shadow-zinc-200/50 dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-none sm:p-10">
+          <BackButton />
           <div className="mb-8">
             <p className="text-sm font-medium tracking-wide text-zinc-500 dark:text-zinc-400">
               AI Hiring Platform

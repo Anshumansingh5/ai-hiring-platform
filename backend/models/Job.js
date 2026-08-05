@@ -36,8 +36,13 @@ const jobSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["draft", "active", "closed"],
+      enum: ["draft", "active", "closed", "archived", "deleted"],
       default: "active",
+    },
+
+    deletedAt: {
+      type: Date,
+      default: null,
     },
 
     recruiter: {

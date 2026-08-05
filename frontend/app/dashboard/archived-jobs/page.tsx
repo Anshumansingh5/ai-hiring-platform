@@ -13,7 +13,7 @@ type Job = {
   description: string;
 };
 
-export default function MyJobsPage() {
+export default function ArchivedJobsPage() {
   const router = useRouter();
   const [token, setToken] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
@@ -21,8 +21,10 @@ export default function MyJobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [archivingId, setArchivingId] = useState<string | null>(null);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
+  const [actionMessage, setActionMessage] = useState("");
 
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
@@ -41,51 +43,46 @@ export default function MyJobsPage() {
       return;
     }
 
-    const fetchJobs = async () => {
+    const fetchArchivedJobs = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/jobs", {
-          headers: {
-            Authorization: `Bearer ${storedToken}`,
+        const response = await fetch(
+          "http://localhost:5000/api/jobs/archived",
+          {
+            headers: {
+              Authorization: `Bearer ${storedToken}`,
+            },
           },
-        });
+        );
         const data = await response.json();
 
         if (!response.ok || !data.success) {
-          setError(data.message || "Unable to load jobs.");
+          setError(data.message || "Unable to load archived jobs.");
           return;
         }
 
         setJobs(data.data);
       } catch {
-        setError("Unable to load jobs. Please try again.");
+        setError("Unable to load archived jobs. Please try again.");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchJobs();
+    fetchArchivedJobs();
   }, [router]);
 
-  const handleArchive = async (jobId: string) => {
+  const handleRestore = async (jobId: string) => {
     if (!token) {
       router.replace("/");
       return;
     }
 
-    const confirmed = window.confirm(
-      "Archive this job?\n\n" +
-        "• The job will no longer accept new applications.\n" +
-        "• Existing applications remain available.\n" +
-        "• You can restore this job later.",
-    );
-    if (!confirmed) return;
-
-    setArchivingId(jobId);
+    setRestoringId(jobId);
     setActionError("");
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/jobs/${jobId}/archive`,
+        `http://localhost:5000/api/jobs/${jobId}/restore`,
         {
           method: "PATCH",
           headers: {
@@ -96,16 +93,63 @@ export default function MyJobsPage() {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        setActionError(data.message || "Unable to archive job.");
+        setActionError(data.message || "Unable to restore job.");
         return;
       }
 
-      // Archived jobs no longer belong in the (active-only) My Jobs list.
+      // Restored jobs become active again and move back to My Jobs.
       setJobs((prev) => prev.filter((job) => job._id !== jobId));
+      setActionMessage("");
     } catch {
-      setActionError("Unable to archive job. Please try again.");
+      setActionError("Unable to restore job. Please try again.");
     } finally {
-      setArchivingId(null);
+      setRestoringId(null);
+    }
+  };
+
+  const handleDelete = async (jobId: string) => {
+    if (!token) {
+      router.replace("/");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "This job will be permanently deleted.\n\n" +
+        "It can only be recovered by the platform administrator within the " +
+        "next 7 days.\n\n" +
+        "After 7 days, the job and all associated applications will be " +
+        "permanently removed.\n\n" +
+        "This action cannot be undone.",
+    );
+    if (!confirmed) return;
+
+    setDeletingId(jobId);
+    setActionError("");
+    setActionMessage("");
+
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/jobs/${jobId}/permanent`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        setActionError(data.message || "Unable to delete job.");
+        return;
+      }
+
+      setJobs((prev) => prev.filter((job) => job._id !== jobId));
+      setActionMessage("Job permanently deleted.");
+    } catch {
+      setActionError("Unable to delete job. Please try again.");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -127,18 +171,11 @@ export default function MyJobsPage() {
               AI Hiring Platform
             </p>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-              My Jobs
+              Archived Jobs
             </h1>
             <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-              Review the roles you have created.
+              Restore a job to make it active and accept applications again.
             </p>
-            <button
-              type="button"
-              onClick={() => router.push("/dashboard/archived-jobs")}
-              className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-zinc-600 transition hover:text-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 dark:focus-visible:outline-zinc-100"
-            >
-              View archived jobs <span aria-hidden="true">&rarr;</span>
-            </button>
           </div>
 
           {actionError && (
@@ -147,24 +184,23 @@ export default function MyJobsPage() {
             </p>
           )}
 
+          {actionMessage && (
+            <p className="mb-4 text-sm text-emerald-600 dark:text-emerald-400">
+              {actionMessage}
+            </p>
+          )}
+
           {loading ? (
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              Loading jobs...
+              Loading archived jobs...
             </p>
           ) : error ? (
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           ) : jobs.length === 0 ? (
             <div className="rounded-xl border border-zinc-200 bg-white p-6 text-center dark:border-zinc-800 dark:bg-zinc-900">
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                No jobs created yet.
+                No archived jobs.
               </p>
-              <button
-                type="button"
-                onClick={() => router.push("/dashboard/new-job")}
-                className="mt-4 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:focus-visible:outline-zinc-100"
-              >
-                Create Job
-              </button>
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
@@ -188,31 +224,21 @@ export default function MyJobsPage() {
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={() =>
-                        router.push(
-                          `/dashboard/my-jobs/${job._id}/applications`,
-                        )
-                      }
-                      className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 transition hover:border-zinc-400 hover:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-zinc-600 dark:hover:bg-zinc-800 dark:focus-visible:outline-zinc-100"
-                    >
-                      View Applications
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        router.push(`/dashboard/my-jobs/${job._id}/edit`)
-                      }
-                      className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 transition hover:border-zinc-400 hover:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-zinc-600 dark:hover:bg-zinc-800 dark:focus-visible:outline-zinc-100"
-                    >
-                      Edit Job
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleArchive(job._id)}
-                      disabled={archivingId === job._id}
+                      onClick={() => handleRestore(job._id)}
+                      disabled={restoringId === job._id}
                       className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 transition hover:border-zinc-400 hover:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-zinc-600 dark:hover:bg-zinc-800 dark:focus-visible:outline-zinc-100"
                     >
-                      {archivingId === job._id ? "Archiving..." : "Archive Job"}
+                      {restoringId === job._id ? "Restoring..." : "Restore"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(job._id)}
+                      disabled={deletingId === job._id}
+                      className="rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:border-red-400 hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-900 dark:bg-zinc-900 dark:text-red-400 dark:hover:border-red-800 dark:hover:bg-red-950/30 dark:focus-visible:outline-red-500"
+                    >
+                      {deletingId === job._id
+                        ? "Deleting..."
+                        : "Delete Permanently"}
                     </button>
                   </div>
                 </article>

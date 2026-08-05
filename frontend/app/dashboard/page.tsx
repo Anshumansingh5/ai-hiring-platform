@@ -106,27 +106,27 @@ export default function DashboardPage() {
               <>
                 <button
                   type="button"
-                  disabled
-                  className="rounded-xl border border-zinc-200 bg-white p-5 text-left opacity-60 dark:border-zinc-800 dark:bg-zinc-900"
+                  onClick={() => router.push("/dashboard/browse-jobs")}
+                  className="rounded-xl border border-zinc-200 bg-white p-5 text-left transition hover:border-zinc-400 hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-600 dark:focus-visible:outline-zinc-100"
                 >
                   <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
                     Browse Jobs
                   </h2>
                   <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                    Coming soon.
+                    Explore open roles and apply.
                   </p>
                 </button>
 
                 <button
                   type="button"
-                  disabled
-                  className="rounded-xl border border-zinc-200 bg-white p-5 text-left opacity-60 dark:border-zinc-800 dark:bg-zinc-900"
+                  onClick={() => router.push("/dashboard/my-applications")}
+                  className="rounded-xl border border-zinc-200 bg-white p-5 text-left transition hover:border-zinc-400 hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-600 dark:focus-visible:outline-zinc-100"
                 >
                   <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
                     My Applications
                   </h2>
                   <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                    Coming soon.
+                    Track the roles you have applied to.
                   </p>
                 </button>
               </>

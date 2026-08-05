@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function RecruiterLoginPage() {
@@ -9,6 +9,15 @@ export default function RecruiterLoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    if (localStorage.getItem("token")) {
+      router.replace("/dashboard");
+      return;
+    }
+    setCheckingAuth(false);
+  }, [router]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -42,6 +51,11 @@ export default function RecruiterLoginPage() {
       setLoading(false);
     }
   };
+
+  // Don't render the form while we check for an existing session / redirect.
+  if (checkingAuth) {
+    return null;
+  }
 
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6 lg:px-8">

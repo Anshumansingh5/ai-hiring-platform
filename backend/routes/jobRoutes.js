@@ -25,7 +25,42 @@ router.get(
   jobController.getAllJobs
 );
 
+router.get(
+  "/all",
+  authenticate,
+  authorize("candidate"),
+  jobController.getAvailableJobs
+);
+
+router.get(
+  "/archived",
+  authenticate,
+  authorize("recruiter", "admin"),
+  jobController.getArchivedJobs
+);
+
 router.get("/:id", jobController.getJobById);
+
+router.patch(
+  "/:id/archive",
+  authenticate,
+  authorize("recruiter", "admin"),
+  jobController.archiveJob
+);
+
+router.patch(
+  "/:id/restore",
+  authenticate,
+  authorize("recruiter", "admin"),
+  jobController.restoreJob
+);
+
+router.delete(
+  "/:id/permanent",
+  authenticate,
+  authorize("recruiter", "admin"),
+  jobController.permanentlyDeleteJob
+);
 
 router.put(
   "/:id",

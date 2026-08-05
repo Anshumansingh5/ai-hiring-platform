@@ -5,9 +5,45 @@ const createJob = async (jobData) => {
 };
 
 const getAllJobs = async (recruiterId) => {
-  return await Job.find({ recruiter: recruiterId }).populate(
+  return await Job.find({ recruiter: recruiterId, status: "active" }).populate(
     "recruiter",
     "name email"
+  );
+};
+
+const getArchivedJobs = async (recruiterId) => {
+  return await Job.find({
+    recruiter: recruiterId,
+    status: "archived",
+  }).populate("recruiter", "name email");
+};
+
+const getAvailableJobs = async () => {
+  return await Job.find({ status: "active" }).populate(
+    "recruiter",
+    "name email"
+  );
+};
+
+const archiveJob = async (id) => {
+  return await Job.findByIdAndUpdate(
+    id,
+    { status: "archived" },
+    { new: true }
+  );
+};
+
+const restoreJob = async (id) => {
+  return await Job.findByIdAndUpdate(id, { status: "active" }, { new: true });
+};
+
+// Soft delete: the document stays in the Jobs collection (kept for the
+// 7-day recovery window) but is marked deleted with a timestamp.
+const permanentlyDeleteJob = async (id) => {
+  return await Job.findByIdAndUpdate(
+    id,
+    { status: "deleted", deletedAt: new Date() },
+    { new: true }
   );
 };
 
@@ -29,6 +65,11 @@ const deleteJob = async (id) => {
 module.exports = {
   createJob,
   getAllJobs,
+  getArchivedJobs,
+  getAvailableJobs,
+  archiveJob,
+  restoreJob,
+  permanentlyDeleteJob,
   getJobById,
   updateJob,
   deleteJob,
