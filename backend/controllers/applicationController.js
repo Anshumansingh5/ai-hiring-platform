@@ -18,7 +18,12 @@ const applyJob = async (req, res, next) => {
 
 const getMyApplications = async (req, res, next) => {
   try {
-    const applications = await applicationService.getMyApplications(req.user.id);
+    const { search, status, sort } = req.query;
+
+    const applications = await applicationService.getMyApplications(
+      req.user.id,
+      { search, status, sort }
+    );
 
     return res.json({
       success: true,
@@ -31,10 +36,13 @@ const getMyApplications = async (req, res, next) => {
 
 const getApplicationsForJob = async (req, res, next) => {
   try {
+    const { search, status, sort } = req.query;
+
     const applications =
       await applicationService.getApplicationsForJob(
         req.params.jobId,
-        req.user.id
+        req.user.id,
+        { search, status, sort }
       );
 
     return res.json({

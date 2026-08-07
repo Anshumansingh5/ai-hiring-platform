@@ -5,6 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 
 import BackButton from "@/app/components/BackButton";
 
+const controlClassName =
+  "block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none transition focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-400 dark:focus:ring-zinc-400/10";
+
 type Candidate = {
   _id: string;
   name?: string;
@@ -41,6 +44,10 @@ export default function JobApplicationsPage() {
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [sort, setSort] = useState("newest");
 
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
@@ -58,34 +65,58 @@ export default function JobApplicationsPage() {
       router.replace("/");
       return;
     }
+  }, [router]);
+
+  // Fetch (and re-fetch) applications whenever a filter changes. Debounced so
+  // typing in the search box doesn't fire a request on every keystroke.
+  useEffect(() => {
+    if (!token) return;
 
     const fetchApplications = async () => {
+      // `searching` drives a small inline indicator; it never hides the list.
+      setSearching(true);
+      setError("");
+
       try {
-        const response = await fetch(
-          `http://localhost:5000/api/applications/job/${jobId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${storedToken}`,
-            },
+        const params = new URLSearchParams();
+        if (search) params.set("search", search);
+        if (statusFilter) params.set("status", statusFilter);
+        if (sort) params.set("sort", sort);
+
+        const queryString = params.toString();
+        const url = `http://localhost:5000/api/applications/job/${jobId}${
+          queryString ? `?${queryString}` : ""
+        }`;
+
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${token}`,
           },
-        );
+        });
         const data = await response.json();
 
         if (!response.ok || !data.success) {
+          // Keep the previous results on screen; just surface the error.
           setError(data.message || "Unable to load applications.");
           return;
         }
 
+        // Swap the list in only after a successful response, so the previous
+        // results stay visible (no flicker) while the request is in flight.
         setApplications(data.data);
       } catch {
         setError("Unable to load applications. Please try again.");
       } finally {
+        setSearching(false);
+        // Clears the initial full-page loading after the first fetch; it is
+        // never set back to true, so searches don't trigger it again.
         setLoading(false);
       }
     };
 
-    fetchApplications();
-  }, [jobId, router]);
+    const timer = setTimeout(fetchApplications, 500);
+    return () => clearTimeout(timer);
+  }, [token, jobId, search, statusFilter, sort]);
 
   const handleStatusChange = async (
     applicationId: string,
@@ -153,6 +184,8 @@ export default function JobApplicationsPage() {
     return null;
   }
 
+  const hasActiveFilters = Boolean(search || statusFilter);
+
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
       <div className="w-full max-w-4xl">
@@ -170,16 +203,67 @@ export default function JobApplicationsPage() {
             </p>
           </div>
 
+          <div className="mb-6 space-y-3">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by candidate name or email..."
+              className={controlClassName}
+            />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                aria-label="Filter by status"
+                className={controlClassName}
+              >
+                <option value="">All statuses</option>
+                {STATUS_OPTIONS.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+                aria-label="Sort order"
+                className={controlClassName}
+              >
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+              </select>
+            </div>
+            {searching && !loading && (
+              <p
+                className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400"
+                aria-live="polite"
+              >
+                <span
+                  className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-300"
+                  aria-hidden="true"
+                />
+                Searching...
+              </p>
+            )}
+            {!searching && error && applications.length > 0 && (
+              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+            )}
+          </div>
+
           {loading ? (
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
               Loading applications...
             </p>
-          ) : error ? (
+          ) : error && applications.length === 0 ? (
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           ) : applications.length === 0 ? (
             <div className="rounded-xl border border-zinc-200 bg-white p-6 text-center dark:border-zinc-800 dark:bg-zinc-900">
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                No applications received yet.
+                {hasActiveFilters
+                  ? "No matching applications found."
+                  : "No applications received yet."}
               </p>
             </div>
           ) : (
